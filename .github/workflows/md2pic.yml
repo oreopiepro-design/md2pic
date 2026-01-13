@@ -1,0 +1,28 @@
+name: md2pic
+on:
+  push:
+    paths: ['docs/*.md']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm i -g md-to-puppeteer-pdf
+      - run: |
+          for f in docs/*.md; do
+            md-to-puppeteer-pdf "$f" --output "${f%.md}.png" --format=A4 --margin=0
+          done
+      - name: upload to sm.ms
+        env:
+          SMMS_TOKEN: ${{ secrets.SMMS_TOKEN }}
+        run: |
+          sudo apt-get install -y jq
+          for img in docs/*.png; do
+            url=$(curl -s -F "smfile=@$img" -H "Authorization: $SMMS_TOKEN" https://sm.ms/api/v2/upload | jq -r .data.url)
+            echo "![$(basename "$img")]($url)" >> pics.md
+          done
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'bot: auto update pics'
