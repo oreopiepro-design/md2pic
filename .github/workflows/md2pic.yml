@@ -10,16 +10,22 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
 
-      # 1. 安装真实存在的包
-      - run: npm i -g md-to-pdf
+      # 1. 国内镜像 + 仅安装必要依赖
+      - name: install md-to-pdf
+        env:
+          PUPPETEER_DOWNLOAD_HOST: https://npmmirror.com/mirrors
+        run: |
+          npm i -g md-to-pdf
+          # 字体防止中文方块
+          sudo apt-get update && sudo apt-get install -y fonts-noto-cjk
 
-      # 2. 批量转 png
+      # 2. 转图
       - run: |
           for f in docs/*.md; do
             md-to-pdf "$f" --output "${f%.md}.png" --as-img
           done
 
-      # 3. 上传到图床（同以前）
+      # 3. 上传图床（同上）
       - name: upload
         env:
           SMMS_TOKEN: ${{ secrets.SMMS_TOKEN }}
@@ -30,7 +36,6 @@ jobs:
             echo "![$(basename "$img")]($url)" >> pics.md
           done
 
-      # 4. 把 pics.md 推回仓库
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: 'bot: auto update pics'
